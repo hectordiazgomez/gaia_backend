@@ -19,7 +19,6 @@ dataset = pd.read_csv('output.csv')
 print(dataset.head())
 
 df_train = dataset[dataset.split=='train'].copy()
-df_dev = dataset[dataset.split=='dev'].copy()
 df_test = dataset[dataset.split=='test'].copy()
 
 model_name = "facebook/nllb-200-distilled-600M"
@@ -27,6 +26,7 @@ tokenizer = AutoTokenizer.from_pretrained(model_name)
 model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
 
 #The language code are the first 3 letter of the language name  + _Latn
+#The tokenizer.src_lang comes from the frontend
 tokenizer.src_lang = "spa_Latn"
 inputs = tokenizer(text="Hola a todos mis amigos", return_tensors="pt")
 translated_tokens = model.generate(
@@ -39,6 +39,7 @@ def word_tokenize(text):
     return re.findall('(\w+|[^\w\s])', text)
 #The language token codes are the first 3 letter of the language name  + _toks
 #The language words code are the first 3 letter of the language name  + _words
+
 smpl = df_train.sample(5, random_state=1)
 smpl['spa_toks'] = smpl.spa.apply(tokenizer.tokenize)
 smpl['awa_toks'] = smpl.awa.apply(tokenizer.tokenize)
@@ -189,14 +190,14 @@ def translate(
     return tokenizer.batch_decode(result, skip_special_tokens=True)
 
 dataset = pd.read_csv('output.csv')
-df_dev = dataset[dataset['split'] == 'dev'][:10]
+df_test = dataset[dataset['split'] == 'dev'][:10]
 
 #Code is the first three letters of the target_language_translated
-df_dev['awa_translated'] = df_dev['awa'].apply(lambda x: translate(x, 'spa_Latn', 'awa_Latn')[0])
-sampled_df = df_dev.sample(10, random_state=5)[["spa", "awa",  "awa_translated"]]
+df_test['awa_translated'] = df_test['awa'].apply(lambda x: translate(x, 'spa_Latn', 'awa_Latn')[0])
+sampled_df = df_test.sample(10, random_state=5)[["spa", "awa",  "awa_translated"]]
 
 bleu_calc = sacrebleu.BLEU()
 chrf_calc = sacrebleu.CHRF(word_order=2)
 
-print(bleu_calc.corpus_score(df_dev['awa_translated'].tolist(), [df_dev['awa'].tolist()]))
-print(chrf_calc.corpus_score(df_dev['awa_translated'].tolist(), [df_dev['awa'].tolist()]))
+print(bleu_calc.corpus_score(df_test['awa_translated'].tolist(), [df_test['awa'].tolist()]))
+print(chrf_calc.corpus_score(df_test['awa_translated'].tolist(), [df_test['awa'].tolist()]))
